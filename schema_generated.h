@@ -8,9 +8,10 @@
 
 namespace tflite {
 
-struct CustomQuantization;
-struct CustomQuantizationBuilder;
-struct CustomQuantizationT;
+// 每个数据结构都会生成这三个东西
+struct CustomQuantization; // Table
+struct CustomQuantizationBuilder; // 这个看名字应该是用来构建这个类的
+struct CustomQuantizationT; // NativeTable
 
 struct QuantizationParameters;
 struct QuantizationParametersBuilder;
@@ -512,6 +513,7 @@ struct Model;
 struct ModelBuilder;
 struct ModelT;
 
+// 这里是声明，下边有实现
 inline const flatbuffers::TypeTable *CustomQuantizationTypeTable();
 
 inline const flatbuffers::TypeTable *QuantizationParametersTypeTable();
@@ -764,6 +766,8 @@ inline const flatbuffers::TypeTable *SignatureDefTypeTable();
 
 inline const flatbuffers::TypeTable *ModelTypeTable();
 
+// ----------------------------------------  enum and union start  -----------------------------------------
+
 enum TensorType {
   TensorType_FLOAT32 = 0,
   TensorType_FLOAT16 = 1,
@@ -830,12 +834,14 @@ inline const char * const *EnumNamesTensorType() {
   return names;
 }
 
+// 从value得到name
 inline const char *EnumNameTensorType(TensorType e) {
   if (flatbuffers::IsOutRange(e, TensorType_FLOAT32, TensorType_UINT32)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesTensorType()[index];
 }
 
+// schema里是union,union和enum很像，不同的是这里的name是schema里定义的table
 enum QuantizationDetails {
   QuantizationDetails_NONE = 0,
   QuantizationDetails_CustomQuantization = 1,
@@ -843,6 +849,7 @@ enum QuantizationDetails {
   QuantizationDetails_MAX = QuantizationDetails_CustomQuantization
 };
 
+// value
 inline const QuantizationDetails (&EnumValuesQuantizationDetails())[2] {
   static const QuantizationDetails values[] = {
     QuantizationDetails_NONE,
@@ -851,6 +858,7 @@ inline const QuantizationDetails (&EnumValuesQuantizationDetails())[2] {
   return values;
 }
 
+// value,比enum多了一个"NONE"
 inline const char * const *EnumNamesQuantizationDetails() {
   static const char * const names[3] = {
     "NONE",
@@ -860,6 +868,7 @@ inline const char * const *EnumNamesQuantizationDetails() {
   return names;
 }
 
+// 从value得到name
 inline const char *EnumNameQuantizationDetails(QuantizationDetails e) {
   if (flatbuffers::IsOutRange(e, QuantizationDetails_NONE, QuantizationDetails_CustomQuantization)) return "";
   const size_t index = static_cast<size_t>(e);
@@ -874,6 +883,17 @@ template<> struct QuantizationDetailsTraits<tflite::CustomQuantization> {
   static const QuantizationDetails enum_value = QuantizationDetails_CustomQuantization;
 };
 
+/**
+ * @brief 
+ * 定义union
+ * 构造函数
+ * Set(val)函数
+ * Reset()函数
+ * UnPack()函数
+ * Pack()函数
+ * union里每个值的As函数
+ * 两个verify函数
+ */
 struct QuantizationDetailsUnion {
   QuantizationDetails type;
   void *value;
@@ -919,6 +939,7 @@ struct QuantizationDetailsUnion {
 bool VerifyQuantizationDetails(flatbuffers::Verifier &verifier, const void *obj, QuantizationDetails type);
 bool VerifyQuantizationDetailsVector(flatbuffers::Verifier &verifier, const flatbuffers::Vector<flatbuffers::Offset<void>> *values, const flatbuffers::Vector<uint8_t> *types);
 
+// schema里是enum
 enum DimensionType {
   DimensionType_DENSE = 0,
   DimensionType_SPARSE_CSR = 1,
@@ -949,6 +970,7 @@ inline const char *EnumNameDimensionType(DimensionType e) {
   return EnumNamesDimensionType()[index];
 }
 
+// union
 enum SparseIndexVector {
   SparseIndexVector_NONE = 0,
   SparseIndexVector_Int32Vector = 1,
@@ -985,6 +1007,7 @@ inline const char *EnumNameSparseIndexVector(SparseIndexVector e) {
   return EnumNamesSparseIndexVector()[index];
 }
 
+// 这个Traits是啥东西？有几个值就有几个Traits
 template<typename T> struct SparseIndexVectorTraits {
   static const SparseIndexVector enum_value = SparseIndexVector_NONE;
 };
@@ -3479,19 +3502,28 @@ inline const char *EnumNameCustomOptionsFormat(CustomOptionsFormat e) {
   return EnumNamesCustomOptionsFormat()[index];
 }
 
+
+// ----------------------------------------  enum and union end  -----------------------------------------
+
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ START +++++++++++++++++++++++++++++++++++++++++++++++
+// 每个struct对应的 *T ,继承自NativeTable
 struct CustomQuantizationT : public flatbuffers::NativeTable {
   typedef CustomQuantization TableType;
-  std::vector<uint8_t> custom;
+  std::vector<uint8_t> custom; // 这应该是存真正数据的地方
+  // 默认构造函数
   CustomQuantizationT() {
   }
 };
 
+// flatterbuffer类
 struct CustomQuantization FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef CustomQuantizationT NativeTableType;
   typedef CustomQuantizationBuilder Builder;
   static const flatbuffers::TypeTable *MiniReflectTypeTable() {
     return CustomQuantizationTypeTable();
   }
+  // 这个应该是说这个数据会占多少内存，一个内存的偏移量
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_CUSTOM = 4
   };
@@ -3504,16 +3536,20 @@ struct CustomQuantization FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            verifier.VerifyVector(custom()) &&
            verifier.EndTable();
   }
+  // 打包，解包函数， 后边有实现
   CustomQuantizationT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
   void UnPackTo(CustomQuantizationT *_o, const flatbuffers::resolver_function_t *_resolver = nullptr) const;
   static flatbuffers::Offset<CustomQuantization> Pack(flatbuffers::FlatBufferBuilder &_fbb, const CustomQuantizationT* _o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
 
+// 主要是 add_custom 的实现
+// 调用 FlatBufferBuilder 的 AddOffset 函数
 struct CustomQuantizationBuilder {
   typedef CustomQuantization Table;
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
   void add_custom(flatbuffers::Offset<flatbuffers::Vector<uint8_t>> custom) {
+    // 这应该是根据内存偏移量把custom里的数据写到序列化文件里
     fbb_.AddOffset(CustomQuantization::VT_CUSTOM, custom);
   }
   explicit CustomQuantizationBuilder(flatbuffers::FlatBufferBuilder &_fbb)
@@ -3528,6 +3564,8 @@ struct CustomQuantizationBuilder {
   }
 };
 
+// 一共三种创建函数
+// 这个是创建一个CustomQuantization,其实是调用了 CustomQuantizationBuilder 的 add_custom 函数
 inline flatbuffers::Offset<CustomQuantization> CreateCustomQuantization(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::Vector<uint8_t>> custom = 0) {
@@ -3536,6 +3574,7 @@ inline flatbuffers::Offset<CustomQuantization> CreateCustomQuantization(
   return builder_.Finish();
 }
 
+// 这个直接创建？第二个参数不一样
 inline flatbuffers::Offset<CustomQuantization> CreateCustomQuantizationDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     const std::vector<uint8_t> *custom = nullptr) {
@@ -3546,7 +3585,11 @@ inline flatbuffers::Offset<CustomQuantization> CreateCustomQuantizationDirect(
       custom__);
 }
 
+// 另外一种创建函数声明
 flatbuffers::Offset<CustomQuantization> CreateCustomQuantization(flatbuffers::FlatBufferBuilder &_fbb, const CustomQuantizationT *_o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ END +++++++++++++++++++++++++++++++++++++++++++++++
+
+
 
 struct QuantizationParametersT : public flatbuffers::NativeTable {
   typedef QuantizationParameters TableType;
@@ -12785,6 +12828,16 @@ inline flatbuffers::Offset<Model> CreateModelDirect(
 
 flatbuffers::Offset<Model> CreateModel(flatbuffers::FlatBufferBuilder &_fbb, const ModelT *_o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 
+
+// ++++++++++++++++++++++++++++++++++++++
+/**
+ * 上边声明了的四个函数的实现：
+ * UnPack
+ * UnPackTo
+ * Pack
+ * CreateCustomQuantization
+ */
+// 把序列化文件解包成 C++ 类
 inline CustomQuantizationT *CustomQuantization::UnPack(const flatbuffers::resolver_function_t *_resolver) const {
   std::unique_ptr<tflite::CustomQuantizationT> _o = std::unique_ptr<tflite::CustomQuantizationT>(new CustomQuantizationT());
   UnPackTo(_o.get(), _resolver);
@@ -12811,6 +12864,7 @@ inline flatbuffers::Offset<CustomQuantization> CreateCustomQuantization(flatbuff
       _fbb,
       _custom);
 }
+// ++++++++++++++++++++++++++++++++++++
 
 inline QuantizationParametersT *QuantizationParameters::UnPack(const flatbuffers::resolver_function_t *_resolver) const {
   std::unique_ptr<tflite::QuantizationParametersT> _o = std::unique_ptr<tflite::QuantizationParametersT>(new QuantizationParametersT());
@@ -16237,6 +16291,11 @@ inline flatbuffers::Offset<SignatureDef> CreateSignatureDef(flatbuffers::FlatBuf
       _key);
 }
 
+/**
+ * @brief 
+ * 1. new 一个 ModelT
+ * 2. 把序列化文件解压到new出来的这个ModelT里
+ */
 inline ModelT *Model::UnPack(const flatbuffers::resolver_function_t *_resolver) const {
   std::unique_ptr<tflite::ModelT> _o = std::unique_ptr<tflite::ModelT>(new ModelT());
   UnPackTo(_o.get(), _resolver);
@@ -19721,9 +19780,15 @@ inline const flatbuffers::TypeTable *CustomOptionsFormatTypeTable() {
   return &tt;
 }
 
+
+/**
+ * @brief 为该数据结构生成TypeTable,这个table有什么用?
+ * @return tt TypeTable
+ */
 inline const flatbuffers::TypeTable *CustomQuantizationTypeTable() {
+  // TypeCode 是表示这个数据的类型的，由三个数字组成，详见头文件
   static const flatbuffers::TypeCode type_codes[] = {
-    { flatbuffers::ET_UCHAR, 1, -1 }
+    { flatbuffers::ET_UCHAR, 1, -1 } 
   };
   static const char * const names[] = {
     "custom"
@@ -21419,6 +21484,11 @@ inline const flatbuffers::TypeTable *ModelTypeTable() {
   return &tt;
 }
 
+/**
+ * @brief 
+ * @param [in] buf    序列化文件内存地址
+ * 得到的是Model的地址？
+ */
 inline const tflite::Model *GetModel(const void *buf) {
   return flatbuffers::GetRoot<tflite::Model>(buf);
 }
@@ -21462,6 +21532,12 @@ inline void FinishSizePrefixedModelBuffer(
   fbb.FinishSizePrefixed(root, ModelIdentifier());
 }
 
+/**
+ * @brief 解析模型会调用这个函数，入口函数
+ * @param [in] buf    序列化文件内存
+ * @param [in] res    这个为空，应该也可以传进来一个
+ * workflow: GetModel --> UnPack --> 
+ */
 inline std::unique_ptr<tflite::ModelT> UnPackModel(
     const void *buf,
     const flatbuffers::resolver_function_t *res = nullptr) {

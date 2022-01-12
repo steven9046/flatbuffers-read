@@ -1114,9 +1114,9 @@ table Operator {
   custom_options:[ubyte];
   custom_options_format:CustomOptionsFormat;
 
-  // A list of booleans indicating the input tensors which are being mutated by
+  // A list of booleans indicating the input tensors which are being mutated by 被这个op改变的tensor
   // this operator.(e.g. used by RNN and LSTM).
-  // For example, if the "inputs" array refers to 5 tensors and the second and
+  // For example, if the "inputs" array refers to 5 tensors and the second and 输入的会被Op改变？？
   // fifth are mutable variables, then this list will contain
   // [false, true, false, false, true].
   //
@@ -1124,7 +1124,7 @@ table Operator {
   // The list either has the same length as `inputs`, or is empty.
   mutating_variable_inputs:[bool];
 
-  // A list of indices to the subgraph's "tensors" that are internal to an Op.
+  // A list of indices to the subgraph's "tensors" that are internal to an Op. 一个操作符内部的tensor,应该就是权重的意思，例如一个kernel
   // Internal tensors are those that do not flow in or out of the operation,
   // but instead are part of internal computation. As such, the operation's
   // implementation may manage its memory more efficiently. They are needed
